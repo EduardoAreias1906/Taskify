@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization; // necessário para JsonStringEnumConverter
 using Taskify.Data;
 
 // Configura serviços e middlewares antes de arrancar a app
@@ -10,6 +11,10 @@ builder.Services.AddOpenApi();
 // Regista o AppDbContext como serviço injetável, usando SQLite com a connection string do appsettings.json
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Serializa enums como strings ("PorFazer", "Alta") em vez de inteiros (0, 3)
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 // Constrói a app com os serviços registados acima
 var app = builder.Build();
