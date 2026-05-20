@@ -11,7 +11,7 @@ A razão de pretender fazer um segundo Projeto, após o Notify é que achei inte
 - SQLite: Já trabalhei com o in-memory no projeto anterior, quero explorar outras alternativas.
 - Minimal API: É mais comum no .NET 9, os endpoints são definidos no Program.cs. Achei a escolha correta para uma API desta dimensão (pequena). 
 - EF Core: Mantive o EF Core como ORM, pelas mesmas razões que no Notify: é o standard em .NET moderno e dá-me CRUD funcional rapidamente, com migrações que facilitam evolução do schema. Considerei alternativas que conhecia da pesquisa para o projeto 1 — Dapper (escreves SQL à mão, mais performante) e ADO.NET puro (controlo total mas muito verboso). Para o âmbito deste exercício, a produtividade do EF Core compensa qualquer perda de performance."
-- Groq como LLM provider: Foi o mesmo utilizado no Notify. Gratuito sem precisas de colocar cartão de crédito. API é compativem com OpenAI, facilita a troca de provider mais tarde se quiser.
+- Groq como LLM provider: Foi o mesmo utilizado no Notify. Gratuito sem precisas de colocar cartão de crédito. API é compatível com OpenAI, facilita a troca de provider mais tarde se quiser.
 - Validação: Para validação dos DTOs usei DataAnnotations, os atributos standard do .NET. Cobre bem as regras do meu modelo (campos obrigatórios, comprimentos, intervalos). Considerei FluentValidation, que é mais expressivo e suporta regras complexas, mas para este projeto as regras são simples e a dependência extra não se justifica. 
 
 
@@ -49,6 +49,16 @@ A razão de pretender fazer um segundo Projeto, após o Notify é que achei inte
 
 ### Apagar
 - Hard delete
+
+
+## [data] — decisões técnicas durante implementação
+
+- **IsOverdue calculado em runtime:** propriedade com `[NotMapped]` no modelo — nunca persiste na BD, nunca fica desfasada. Exposta no `TaskResponseDto` para o frontend usar diretamente.
+- **Enums como strings:** configurei `JsonStringEnumConverter` via `ConfigureHttpJsonOptions` (forma correta para Minimal API) — a API devolve `"PorFazer"` em vez de `0`, mais legível para o frontend JS.
+- **`MapGroup("/tasks")`:** agrupa todos os endpoints de tarefas com prefixo comum — organização sem abstração desnecessária.
+- **`TaskMappings.cs`:** classe estática com método de extensão `ToResponseDto()` para converter `TaskItem` em `TaskResponseDto` — evita repetição sem overhead de AutoMapper.
+- **`ItemStatus` em vez de `TaskStatus`:** evita conflito com `System.Threading.Tasks.TaskStatus` que existe no .NET base.
+
 
 ## Uso de IA
 (Vais preenchendo à medida que avanças, como fizeste no Notify)

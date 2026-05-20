@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json.Serialization; // necessário para JsonStringEnumConverter
+using System.Text.Json.Serialization;
+using Taskify;
 using Taskify.Data;
+using Taskify.Dtos;
+using Taskify.Models;
+
 
 // Configura serviços e middlewares antes de arrancar a app
 var builder = WebApplication.CreateBuilder(args);
@@ -29,5 +33,73 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // Os endpoints da API vão ser mapeados aqui
+
+// Agrupa todos os endpoints de tarefas sob o prefixo /tasks
+var tasks = app.MapGroup("/tasks");
+
+// Devolve todas as tarefas, ordenadas por prioridade descendente e depois por data limite
+tasks.MapGet("/", async (AppDbContext db) =>
+{
+    var list = await db.Tasks
+        .OrderByDescending(t => t.Priority)
+        .ThenBy(t => t.DueDate)
+        .ToListAsync();
+
+    return list.Select(t => t.ToResponseDto());
+});
+
+// Devolve uma tarefa pelo Id; 404 se não existir
+tasks.MapGet("/{id}", async (int id, AppDbContext db) =>
+{
+    var task = await db.Tasks.FindAsync(id);
+    return task is null ? Results.NotFound() : Results.Ok(task.ToResponseDto());
+});
+
+// Cria uma nova tarefa; devolve 201 com a localização do recurso criado
+tasks.MapPost("/", async (CreateTaskDto dto, AppDbContext db) =>
+{
+    var task = new TaskItem
+    {
+        Title = dto.Title,
+        Description = dto.Description,
+        DueDate = dto.DueDate,
+        EstimatedDuration = dto.EstimatedDuration,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    db.Tasks.Add(task);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/tasks/{task.Id}", task.ToResponseDto());
+});
+
+// Atualiza todos os campos editáveis de uma tarefa existente
+tasks.MapPut("/{id}", async (int id, UpdateTaskDto dto, AppDbContext db) =>
+{
+    var task = await db.Tasks.FindAsync(id);
+    if (task is null) return Results.NotFound();
+
+    task.Title = dto.Title;
+    task.Description = dto.Description;
+    task.DueDate = dto.DueDate;
+    task.EstimatedDuration = dto.EstimatedDuration;
+    task.Status = dto.Status;
+    task.Priority = dto.Priority;
+    task.Category = dto.Category;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(task.ToResponseDto());
+});
+
+// Apaga a tarefa permanentemente (hard delete)
+tasks.MapDelete("/{id}", async (int id, AppDbContext db) =>
+{
+    var task = await db.Tasks.FindAsync(id);
+    if (task is null) return Results.NotFound();
+
+    db.Tasks.Remove(task);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
 
 app.Run();
