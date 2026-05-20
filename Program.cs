@@ -27,6 +27,13 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 // Constrói a app com os serviços registados acima
 var app = builder.Build();
 
+// Cria a base de dados e tabelas se não existirem — mais robusto em desenvolvimento do que Migrate()
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+}
+
 // Expõe o endpoint OpenAPI só em desenvolvimento (nunca em produção)
 if (app.Environment.IsDevelopment())
 {
@@ -38,8 +45,10 @@ app.UseDefaultFiles();
 // Serve os ficheiros estáticos da pasta wwwroot/
 app.UseStaticFiles();
 
-// Redireciona HTTP para HTTPS automaticamente
-app.UseHttpsRedirection();
+// Só redireciona para HTTPS fora de desenvolvimento (em dev corremos só em HTTP)
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
+
 
 // Os endpoints da API vão ser mapeados aqui
 
@@ -120,5 +129,18 @@ tasks.MapPost("/{id}/suggest", async (int id, GroqService groq, AppDbContext db)
     var suggestion = await groq.SuggestAsync(task);
     return suggestion is null ? Results.Problem("O LLM não devolveu sugestão.") : Results.Ok(suggestion);
 });
+
+// Envia todas as tarefas ao LLM para sugestão de re-priorização global
+tasks.MapPost("/reprioritize", async (AppDbContext db, GroqService groq) =>
+{
+    var all = await db.Tasks.ToListAsync();
+    if (!all.Any()) return Results.Ok(new List<TaskReprioritizeSuggestionDto>());
+
+    var suggestions = await groq.ReprioritizeAsync(all);
+    return suggestions is null
+        ? Results.Problem("O LLM não devolveu sugestões.")
+        : Results.Ok(suggestions);
+});
+
 
 app.Run();

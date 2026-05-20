@@ -21,9 +21,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 1rem;
         }
 
         header h1 { font-size: 1.4rem; font-weight: 600; }
+
+        .header-actions { display: flex; gap: 0.5rem; }
 
         .btn {
             padding: 0.5rem 1rem;
@@ -37,11 +40,11 @@
         .btn:hover { opacity: 0.85; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .btn-primary  { background: #3b82f6; color: white; }
-        .btn-success  { background: #22c55e; color: white; }
-        .btn-danger   { background: #ef4444; color: white; }
-        .btn-secondary{ background: #e2e8f0; color: #1e293b; }
-        .btn-purple   { background: #8b5cf6; color: white; }
+        .btn-primary   { background: #3b82f6; color: white; }
+        .btn-success   { background: #22c55e; color: white; }
+        .btn-secondary { background: #e2e8f0; color: #1e293b; }
+        .btn-purple    { background: #8b5cf6; color: white; }
+        .btn-orange    { background: #f97316; color: white; }
 
         /* Kanban board */
         .board {
@@ -119,24 +122,26 @@
             margin-bottom: 0.4rem;
         }
 
-        .task-title { font-weight: 600; font-size: 0.875rem; line-height: 1.3; }
+        .task-title { font-weight: 600; font-size: 0.875rem; line-height: 1.3; flex: 1; }
 
-        .task-delete {
+        .task-actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
+
+        .task-btn {
             background: none;
             border: none;
             cursor: pointer;
             color: #94a3b8;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             padding: 0;
-            flex-shrink: 0;
+            line-height: 1;
         }
-        .task-delete:hover { color: #ef4444; }
+        .task-btn:hover { color: #475569; }
+        .task-btn.delete:hover { color: #ef4444; }
 
         .task-description {
             font-size: 0.78rem;
             color: #64748b;
             margin-bottom: 0.5rem;
-            /* Limita a 2 linhas */
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
@@ -161,14 +166,7 @@
         .badge-overdue          { background: #fee2e2; color: #dc2626; }
         .badge-meta             { background: #f8fafc; color: #64748b; }
 
-        .empty-column {
-            text-align: center;
-            color: #94a3b8;
-            font-size: 0.8rem;
-            padding: 2rem 0;
-        }
-
-        /* Modal */
+        /* Modal de criação/edição */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -204,16 +202,19 @@
         }
 
         .form-group input,
-        .form-group textarea {
+        .form-group textarea,
+        .form-group select {
             width: 100%;
             padding: 0.5rem 0.75rem;
             border: 1px solid #cbd5e1;
             border-radius: 6px;
             font-size: 0.875rem;
             font-family: inherit;
+            background: white;
         }
         .form-group input:focus,
-        .form-group textarea:focus { outline: none; border-color: #3b82f6; }
+        .form-group textarea:focus,
+        .form-group select:focus { outline: none; border-color: #3b82f6; }
         .form-group textarea { resize: vertical; min-height: 80px; }
 
         .modal-actions {
@@ -223,7 +224,7 @@
             margin-top: 1.25rem;
         }
 
-        /* Painel de sugestão do LLM */
+        /* Painel de sugestão individual (criação) */
         .suggestion-panel {
             display: none;
             background: #f8fafc;
@@ -252,6 +253,36 @@
             line-height: 1.5;
         }
 
+        /* Lista de sugestões de re-priorização */
+        .reprioritize-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.75rem;
+            background: #f8fafc;
+        }
+
+        .reprioritize-item-title {
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .reprioritize-item-change {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.35rem;
+            font-size: 0.8rem;
+        }
+
+        .reprioritize-item-reasoning {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-style: italic;
+            line-height: 1.4;
+        }
+
         /* Spinner de loading */
         .loading {
             display: inline-block;
@@ -272,11 +303,14 @@
 
 <header>
     <h1>Taskify</h1>
-    <button class="btn btn-primary" onclick="openModal()">+ Nova Tarefa</button>
+    <div class="header-actions">
+        <!-- Re-priorizar envia todas as tarefas ao LLM para sugestão global -->
+        <button class="btn btn-orange" id="btn-reprioritize" onclick="startReprioritize()">↑↓ Re-priorizar</button>
+        <button class="btn btn-primary" onclick="openCreateModal()">+ Nova Tarefa</button>
+    </div>
 </header>
 
 <div class="board">
-    <!-- Coluna Por fazer -->
     <div class="column" id="col-PorFazer"
          ondragover="onDragOver(event)"
          ondrop="onDrop(event, 'PorFazer')"
@@ -288,7 +322,6 @@
         <div id="tasks-PorFazer"></div>
     </div>
 
-    <!-- Coluna Em curso -->
     <div class="column" id="col-EmCurso"
          ondragover="onDragOver(event)"
          ondrop="onDrop(event, 'EmCurso')"
@@ -300,7 +333,6 @@
         <div id="tasks-EmCurso"></div>
     </div>
 
-    <!-- Coluna Concluída -->
     <div class="column" id="col-Concluida"
          ondragover="onDragOver(event)"
          ondrop="onDrop(event, 'Concluida')"
@@ -313,12 +345,12 @@
     </div>
 </div>
 
-<!-- Modal de criação de tarefa -->
+<!-- Modal de criação / edição de tarefa -->
 <div class="modal-overlay" id="modal">
     <div class="modal">
         <h2 id="modal-title">Nova Tarefa</h2>
 
-        <!-- Passo 1: formulário -->
+        <!-- Passo 1: formulário (criação e edição) -->
         <div id="step-form">
             <div class="form-group">
                 <label>Título *</label>
@@ -336,19 +368,39 @@
                 <label>Duração estimada (minutos)</label>
                 <input type="number" id="f-duration" placeholder="Opcional">
             </div>
+            <!-- Campo de estado só visível em modo de edição -->
+            <div class="form-group" id="f-status-group" style="display:none">
+                <label>Estado</label>
+                <select id="f-status">
+                    <option value="PorFazer">Por fazer</option>
+                    <option value="EmCurso">Em curso</option>
+                    <option value="Concluida">Concluída</option>
+                </select>
+            </div>
+            <!-- Campo de prioridade só visível em modo de edição -->
+            <div class="form-group" id="f-priority-group" style="display:none">
+                <label>Prioridade</label>
+                <select id="f-priority">
+                    <option value="">Sem prioridade</option>
+                    <option value="Critica">Crítica</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Media">Média</option>
+                    <option value="Baixa">Baixa</option>
+                    <option value="Minima">Mínima</option>
+                </select>
+            </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                <button class="btn btn-primary" onclick="createTask()">Criar Tarefa</button>
+                <button class="btn btn-primary" id="btn-submit-form" onclick="submitForm()">Criar Tarefa</button>
             </div>
         </div>
 
-        <!-- Passo 2: sugestão do LLM -->
+        <!-- Passo 2: sugestão LLM (só aparece após criação) -->
         <div id="step-suggest" style="display:none">
             <p style="font-size:0.85rem; color:#475569; margin-bottom:1rem;">
                 Tarefa criada. Podes analisar com o LLM para obter uma sugestão de prioridade e categoria.
             </p>
 
-            <!-- Painel que aparece depois da resposta do LLM -->
             <div class="suggestion-panel" id="suggestion-panel">
                 <h3>Sugestão do LLM</h3>
                 <div class="suggestion-field">
@@ -362,44 +414,57 @@
 
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
-                <button class="btn btn-purple" id="btn-suggest" onclick="suggestLLM()">
-                    Analisar com LLM
-                </button>
-                <!-- Aparece só depois do LLM responder -->
-                <button class="btn btn-success" id="btn-confirm" style="display:none" onclick="confirmSuggestion()">
-                    Confirmar Sugestão
-                </button>
+                <button class="btn btn-purple" id="btn-suggest" onclick="suggestLLM()">Analisar com LLM</button>
+                <button class="btn btn-success" id="btn-confirm" style="display:none" onclick="confirmSuggestion()">Confirmar Sugestão</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Overlay de re-priorização global -->
+<div class="modal-overlay" id="reprioritize-overlay">
+    <div class="modal" style="max-width:600px">
+        <h2>Re-priorizar tarefas</h2>
+        <p style="font-size:0.85rem; color:#475569; margin-bottom:1rem;">
+            O LLM analisou todas as tarefas em conjunto e sugere as seguintes prioridades. Confirma para aplicar.
+        </p>
+        <!-- Lista de sugestões preenchida dinamicamente -->
+        <div id="reprioritize-list"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeReprioritize()">Cancelar</button>
+            <button class="btn btn-success" onclick="confirmReprioritize()">Confirmar todas</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    // Estado local do modal
-    let currentTaskId = null;
+    // Cache das tarefas por id — evita fetch extra ao abrir edição
+    const taskCache = new Map();
+
+    let currentTaskId   = null;
     let currentSuggestion = null;
     let currentTaskData = null;
-    let draggedTaskId = null;
+    let editMode        = false;
+    let editingTaskId   = null;
+    let draggedTaskId   = null;
+    let reprioritizeSuggestions = [];
 
-    // Labels PT-PT para os valores do enum
     const priorityLabels = {
         Critica: 'Crítica', Alta: 'Alta', Media: 'Média',
         Baixa: 'Baixa', Minima: 'Mínima'
     };
 
-    // Carrega as tarefas ao abrir a página
     loadTasks();
 
     async function loadTasks() {
-        const res = await fetch('/tasks');
+        const res   = await fetch('/tasks');
         const tasks = await res.json();
 
-        // Limpa as colunas antes de re-renderizar
-        ['PorFazer', 'EmCurso', 'Concluida'].forEach(s => {
-            document.getElementById(`tasks-${s}`).innerHTML = '';
-        });
+        taskCache.clear();
+        ['PorFazer', 'EmCurso', 'Concluida'].forEach(s =>
+            document.getElementById(`tasks-${s}`).innerHTML = '');
 
-        tasks.forEach(renderTask);
+        tasks.forEach(t => { taskCache.set(t.id, t); renderTask(t); });
         updateCounts();
     }
 
@@ -414,16 +479,16 @@
         card.className = `task-card${task.priority ? ` priority-${task.priority}` : ''}`;
         card.dataset.id = task.id;
         card.draggable = true;
-        card.addEventListener('dragstart', () => {
-            draggedTaskId = task.id;
-            card.classList.add('dragging');
-        });
-        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+        card.addEventListener('dragstart', () => { draggedTaskId = task.id; card.classList.add('dragging'); });
+        card.addEventListener('dragend',   () => card.classList.remove('dragging'));
 
         card.innerHTML = `
             <div class="task-header">
                 <span class="task-title">${esc(task.title)}</span>
-                <button class="task-delete" onclick="deleteTask(${task.id})" title="Apagar">✕</button>
+                <div class="task-actions">
+                    <button class="task-btn" onclick="openEditModal(${task.id})" title="Editar">✎</button>
+                    <button class="task-btn delete" onclick="deleteTask(${task.id})" title="Apagar">✕</button>
+                </div>
             </div>
             <div class="task-description">${esc(task.description)}</div>
             <div class="task-meta">
@@ -445,10 +510,14 @@
         });
     }
 
-    // --- Modal ---
+    // --- Modal criação ---
 
-    function openModal() {
-        document.getElementById('modal').classList.add('active');
+    function openCreateModal() {
+        editMode      = false;
+        editingTaskId = null;
+
+        document.getElementById('modal-title').textContent = 'Nova Tarefa';
+        document.getElementById('btn-submit-form').textContent = 'Criar Tarefa';
         document.getElementById('step-form').style.display = 'block';
         document.getElementById('step-suggest').style.display = 'none';
         document.getElementById('suggestion-panel').classList.remove('active');
@@ -456,22 +525,64 @@
         document.getElementById('btn-suggest').style.display = 'inline-block';
         document.getElementById('btn-suggest').disabled = false;
         document.getElementById('btn-suggest').innerHTML = 'Analisar com LLM';
-        document.getElementById('modal-title').textContent = 'Nova Tarefa';
 
-        // Limpa o formulário
+        // Campos extras (estado, prioridade) só para edição
+        document.getElementById('f-status-group').style.display = 'none';
+        document.getElementById('f-priority-group').style.display = 'none';
+
         ['f-title', 'f-description', 'f-duration'].forEach(id =>
             document.getElementById(id).value = '');
         document.getElementById('f-duedate').value = '';
 
-        currentTaskId = null;
+        currentTaskId     = null;
         currentSuggestion = null;
-        currentTaskData = null;
+        currentTaskData   = null;
+
+        document.getElementById('modal').classList.add('active');
+    }
+
+    // --- Modal edição ---
+
+    function openEditModal(id) {
+        const task = taskCache.get(id);
+        if (!task) return;
+
+        editMode      = true;
+        editingTaskId = id;
+
+        document.getElementById('modal-title').textContent = 'Editar Tarefa';
+        document.getElementById('btn-submit-form').textContent = 'Guardar';
+        document.getElementById('step-form').style.display = 'block';
+        document.getElementById('step-suggest').style.display = 'none';
+
+        // Mostra campos extras (estado e prioridade) em modo de edição
+        document.getElementById('f-status-group').style.display = 'block';
+        document.getElementById('f-priority-group').style.display = 'block';
+
+        // Pré-preenche com os dados atuais da tarefa
+        document.getElementById('f-title').value       = task.title;
+        document.getElementById('f-description').value = task.description;
+        document.getElementById('f-duration').value    = task.estimatedDuration ?? '';
+        document.getElementById('f-status').value      = task.status;
+        document.getElementById('f-priority').value    = task.priority ?? '';
+
+        // Converte UTC para formato datetime-local (YYYY-MM-DDTHH:mm)
+        const d = new Date(task.dueDate);
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+            .toISOString().slice(0, 16);
+        document.getElementById('f-duedate').value = local;
+
+        document.getElementById('modal').classList.add('active');
     }
 
     function closeModal() {
         document.getElementById('modal').classList.remove('active');
-        // Recarrega o board se uma tarefa foi criada durante esta sessão do modal
-        if (currentTaskId) loadTasks();
+        if (currentTaskId || editMode) loadTasks();
+    }
+
+    // Trata tanto criação como edição consoante o modo
+    async function submitForm() {
+        if (editMode) { await saveEdit(); } else { await createTask(); }
     }
 
     async function createTask() {
@@ -489,8 +600,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                title,
-                description,
+                title, description,
                 dueDate: new Date(dueDate).toISOString(),
                 estimatedDuration: duration ? parseInt(duration) : null
             })
@@ -498,7 +608,7 @@
 
         if (!res.ok) { alert('Erro ao criar tarefa.'); return; }
 
-        const task = await res.json();
+        const task    = await res.json();
         currentTaskId   = task.id;
         currentTaskData = task;
 
@@ -507,6 +617,38 @@
         document.getElementById('step-suggest').style.display = 'block';
         document.getElementById('modal-title').textContent = 'Tarefa criada';
     }
+
+    async function saveEdit() {
+        const title       = document.getElementById('f-title').value.trim();
+        const description = document.getElementById('f-description').value.trim();
+        const dueDate     = document.getElementById('f-duedate').value;
+        const duration    = document.getElementById('f-duration').value;
+        const status      = document.getElementById('f-status').value;
+        const priority    = document.getElementById('f-priority').value;
+
+        if (!title || !description || !dueDate) {
+            alert('Preenche os campos obrigatórios: título, descrição e data limite.');
+            return;
+        }
+
+        const res = await fetch(`/tasks/${editingTaskId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title, description,
+                dueDate:           new Date(dueDate).toISOString(),
+                estimatedDuration: duration ? parseInt(duration) : null,
+                status,
+                priority:          priority || null,
+                category:          taskCache.get(editingTaskId)?.category ?? null
+            })
+        });
+
+        if (!res.ok) { alert('Erro ao guardar tarefa.'); return; }
+        closeModal();
+    }
+
+    // --- LLM suggest (passo 2 da criação) ---
 
     async function suggestLLM() {
         const btn = document.getElementById('btn-suggest');
@@ -524,20 +666,17 @@
 
         currentSuggestion = await res.json();
 
-        // Mostra o painel com a sugestão
         document.getElementById('s-priority').textContent =
             priorityLabels[currentSuggestion.priority] || currentSuggestion.priority;
-        document.getElementById('s-category').textContent = currentSuggestion.category;
+        document.getElementById('s-category').textContent  = currentSuggestion.category;
         document.getElementById('s-reasoning').textContent = currentSuggestion.reasoning;
         document.getElementById('suggestion-panel').classList.add('active');
 
-        // Troca botão "Analisar" pelo "Confirmar"
         btn.style.display = 'none';
         document.getElementById('btn-confirm').style.display = 'inline-block';
     }
 
     async function confirmSuggestion() {
-        // PUT com os dados originais + prioridade e categoria sugeridas pelo LLM
         const res = await fetch(`/tasks/${currentTaskId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -564,6 +703,84 @@
         loadTasks();
     }
 
+    // --- Re-priorização global ---
+
+    async function startReprioritize() {
+        const btn = document.getElementById('btn-reprioritize');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading"></span>A analisar...';
+
+        const res = await fetch('/tasks/reprioritize', { method: 'POST' });
+
+        btn.disabled = false;
+        btn.innerHTML = '↑↓ Re-priorizar';
+
+        if (!res.ok) { alert('Erro ao re-priorizar.'); return; }
+
+        reprioritizeSuggestions = await res.json();
+
+        if (!reprioritizeSuggestions.length) {
+            alert('Não há tarefas para re-priorizar.');
+            return;
+        }
+
+        // Constrói a lista de sugestões com prioridade antiga vs nova
+        const list = document.getElementById('reprioritize-list');
+        list.innerHTML = '';
+
+        reprioritizeSuggestions.forEach(s => {
+            const task    = taskCache.get(s.taskId);
+            const oldP    = task?.priority;
+            const newP    = s.priority;
+            const changed = oldP !== newP;
+
+            const item = document.createElement('div');
+            item.className = 'reprioritize-item';
+            item.innerHTML = `
+                <div class="reprioritize-item-title">${esc(task?.title ?? `#${s.taskId}`)}</div>
+                <div class="reprioritize-item-change">
+                    ${oldP
+                        ? `<span class="badge badge-priority-${oldP}">${priorityLabels[oldP]}</span>`
+                        : '<span style="font-size:0.75rem;color:#94a3b8">sem prioridade</span>'}
+                    <span style="color:#94a3b8">${changed ? '→' : '(sem alteração)'}</span>
+                    ${changed ? `<span class="badge badge-priority-${newP}">${priorityLabels[newP]}</span>` : ''}
+                </div>
+                <div class="reprioritize-item-reasoning">${esc(s.reasoning)}</div>
+            `;
+            list.appendChild(item);
+        });
+
+        document.getElementById('reprioritize-overlay').classList.add('active');
+    }
+
+    function closeReprioritize() {
+        document.getElementById('reprioritize-overlay').classList.remove('active');
+    }
+
+    async function confirmReprioritize() {
+        // Aplica cada sugestão com um PUT, mantendo os restantes campos inalterados
+        await Promise.all(reprioritizeSuggestions.map(s => {
+            const task = taskCache.get(s.taskId);
+            if (!task) return;
+            return fetch(`/tasks/${s.taskId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title:             task.title,
+                    description:       task.description,
+                    dueDate:           task.dueDate,
+                    estimatedDuration: task.estimatedDuration,
+                    status:            task.status,
+                    priority:          s.priority,
+                    category:          task.category
+                })
+            });
+        }));
+
+        closeReprioritize();
+        loadTasks();
+    }
+
     // --- Drag and drop ---
 
     function onDragOver(e) {
@@ -580,10 +797,8 @@
         e.currentTarget.classList.remove('drag-over');
         if (!draggedTaskId) return;
 
-        // Vai buscar os dados atuais da tarefa para fazer um PUT completo
-        const res  = await fetch(`/tasks/${draggedTaskId}`);
-        const task = await res.json();
-        if (task.status === newStatus) return;
+        const task = taskCache.get(draggedTaskId);
+        if (!task || task.status === newStatus) return;
 
         await fetch(`/tasks/${draggedTaskId}`, {
             method: 'PUT',
