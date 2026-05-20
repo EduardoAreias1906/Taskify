@@ -18,7 +18,7 @@ A razão de pretender fazer um segundo Projeto, após o Notify é que achei inte
 ## [data] — produto
 
 ### Modelo de tarefa
-- Title, Description, DueDate (obrigatórios), EstimatedDuration, Status, Priority, Category, LlmReasoning, IsOverdue
+- Title, Description, DueDate (obrigatórios), EstimatedDuration, Status, Priority, Category, LlmReasoning, IsOverdue (apenas para frontend)
 
 ### Prioridade
 - 5 níveis: Crítica, Alta, Média, Baixa, Mínima
