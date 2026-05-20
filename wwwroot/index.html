@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskify</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #1e293b;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 { font-size: 1.4rem; font-weight: 600; }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: opacity 0.15s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-primary  { background: #3b82f6; color: white; }
+        .btn-success  { background: #22c55e; color: white; }
+        .btn-danger   { background: #ef4444; color: white; }
+        .btn-secondary{ background: #e2e8f0; color: #1e293b; }
+        .btn-purple   { background: #8b5cf6; color: white; }
+
+        /* Kanban board */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            padding: 1.5rem;
+        }
+
+        .column {
+            background: #e2e8f0;
+            border-radius: 10px;
+            padding: 1rem;
+            min-height: 400px;
+        }
+
+        .column.drag-over {
+            background: #dbeafe;
+            outline: 2px dashed #3b82f6;
+        }
+
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #cbd5e1;
+        }
+
+        .column-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #475569;
+        }
+
+        .column-count {
+            background: #94a3b8;
+            color: white;
+            border-radius: 9999px;
+            padding: 0.1rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Task cards */
+        .task-card {
+            background: white;
+            border-radius: 8px;
+            padding: 0.875rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: grab;
+            border-left: 4px solid #e2e8f0;
+            transition: box-shadow 0.15s;
+        }
+
+        .task-card:hover  { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .task-card.dragging { opacity: 0.4; }
+
+        /* Cor da barra lateral por prioridade */
+        .task-card.priority-Critica { border-left-color: #ef4444; }
+        .task-card.priority-Alta    { border-left-color: #f97316; }
+        .task-card.priority-Media   { border-left-color: #eab308; }
+        .task-card.priority-Baixa   { border-left-color: #3b82f6; }
+        .task-card.priority-Minima  { border-left-color: #9ca3af; }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .task-title { font-weight: 600; font-size: 0.875rem; line-height: 1.3; }
+
+        .task-delete {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            padding: 0;
+            flex-shrink: 0;
+        }
+        .task-delete:hover { color: #ef4444; }
+
+        .task-description {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            /* Limita a 2 linhas */
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .task-meta { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
+        .badge {
+            font-size: 0.68rem;
+            font-weight: 600;
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+        }
+
+        .badge-priority-Critica { background: #fee2e2; color: #dc2626; }
+        .badge-priority-Alta    { background: #ffedd5; color: #ea580c; }
+        .badge-priority-Media   { background: #fef9c3; color: #ca8a04; }
+        .badge-priority-Baixa   { background: #dbeafe; color: #2563eb; }
+        .badge-priority-Minima  { background: #f1f5f9; color: #64748b; }
+        .badge-category         { background: #f0fdf4; color: #16a34a; }
+        .badge-overdue          { background: #fee2e2; color: #dc2626; }
+        .badge-meta             { background: #f8fafc; color: #64748b; }
+
+        .empty-column {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            padding: 2rem 0;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1.25rem; }
+
+        .form-group { margin-bottom: 1rem; }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.35rem;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-family: inherit;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus { outline: none; border-color: #3b82f6; }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+
+        .modal-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            margin-top: 1.25rem;
+        }
+
+        /* Painel de sugestão do LLM */
+        .suggestion-panel {
+            display: none;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .suggestion-panel.active { display: block; }
+
+        .suggestion-panel h3 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.75rem;
+        }
+
+        .suggestion-field { margin-bottom: 0.4rem; font-size: 0.8rem; }
+        .suggestion-field label { font-weight: 600; color: #64748b; margin-right: 0.35rem; }
+
+        .suggestion-reasoning {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-style: italic;
+            margin-top: 0.5rem;
+            line-height: 1.5;
+        }
+
+        /* Spinner de loading */
+        .loading {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #8b5cf6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 0.4rem;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Taskify</h1>
+    <button class="btn btn-primary" onclick="openModal()">+ Nova Tarefa</button>
+</header>
+
+<div class="board">
+    <!-- Coluna Por fazer -->
+    <div class="column" id="col-PorFazer"
+         ondragover="onDragOver(event)"
+         ondrop="onDrop(event, 'PorFazer')"
+         ondragleave="onDragLeave(event)">
+        <div class="column-header">
+            <span class="column-title">Por fazer</span>
+            <span class="column-count" id="count-PorFazer">0</span>
+        </div>
+        <div id="tasks-PorFazer"></div>
+    </div>
+
+    <!-- Coluna Em curso -->
+    <div class="column" id="col-EmCurso"
+         ondragover="onDragOver(event)"
+         ondrop="onDrop(event, 'EmCurso')"
+         ondragleave="onDragLeave(event)">
+        <div class="column-header">
+            <span class="column-title">Em curso</span>
+            <span class="column-count" id="count-EmCurso">0</span>
+        </div>
+        <div id="tasks-EmCurso"></div>
+    </div>
+
+    <!-- Coluna Concluída -->
+    <div class="column" id="col-Concluida"
+         ondragover="onDragOver(event)"
+         ondrop="onDrop(event, 'Concluida')"
+         ondragleave="onDragLeave(event)">
+        <div class="column-header">
+            <span class="column-title">Concluída</span>
+            <span class="column-count" id="count-Concluida">0</span>
+        </div>
+        <div id="tasks-Concluida"></div>
+    </div>
+</div>
+
+<!-- Modal de criação de tarefa -->
+<div class="modal-overlay" id="modal">
+    <div class="modal">
+        <h2 id="modal-title">Nova Tarefa</h2>
+
+        <!-- Passo 1: formulário -->
+        <div id="step-form">
+            <div class="form-group">
+                <label>Título *</label>
+                <input type="text" id="f-title" placeholder="Ex: Preparar apresentação">
+            </div>
+            <div class="form-group">
+                <label>Descrição *</label>
+                <textarea id="f-description" placeholder="Descreve a tarefa em detalhe..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Data limite *</label>
+                <input type="datetime-local" id="f-duedate">
+            </div>
+            <div class="form-group">
+                <label>Duração estimada (minutos)</label>
+                <input type="number" id="f-duration" placeholder="Opcional">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="createTask()">Criar Tarefa</button>
+            </div>
+        </div>
+
+        <!-- Passo 2: sugestão do LLM -->
+        <div id="step-suggest" style="display:none">
+            <p style="font-size:0.85rem; color:#475569; margin-bottom:1rem;">
+                Tarefa criada. Podes analisar com o LLM para obter uma sugestão de prioridade e categoria.
+            </p>
+
+            <!-- Painel que aparece depois da resposta do LLM -->
+            <div class="suggestion-panel" id="suggestion-panel">
+                <h3>Sugestão do LLM</h3>
+                <div class="suggestion-field">
+                    <label>Prioridade:</label><span id="s-priority"></span>
+                </div>
+                <div class="suggestion-field">
+                    <label>Categoria:</label><span id="s-category"></span>
+                </div>
+                <div class="suggestion-reasoning" id="s-reasoning"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+                <button class="btn btn-purple" id="btn-suggest" onclick="suggestLLM()">
+                    Analisar com LLM
+                </button>
+                <!-- Aparece só depois do LLM responder -->
+                <button class="btn btn-success" id="btn-confirm" style="display:none" onclick="confirmSuggestion()">
+                    Confirmar Sugestão
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Estado local do modal
+    let currentTaskId = null;
+    let currentSuggestion = null;
+    let currentTaskData = null;
+    let draggedTaskId = null;
+
+    // Labels PT-PT para os valores do enum
+    const priorityLabels = {
+        Critica: 'Crítica', Alta: 'Alta', Media: 'Média',
+        Baixa: 'Baixa', Minima: 'Mínima'
+    };
+
+    // Carrega as tarefas ao abrir a página
+    loadTasks();
+
+    async function loadTasks() {
+        const res = await fetch('/tasks');
+        const tasks = await res.json();
+
+        // Limpa as colunas antes de re-renderizar
+        ['PorFazer', 'EmCurso', 'Concluida'].forEach(s => {
+            document.getElementById(`tasks-${s}`).innerHTML = '';
+        });
+
+        tasks.forEach(renderTask);
+        updateCounts();
+    }
+
+    function renderTask(task) {
+        const container = document.getElementById(`tasks-${task.status}`);
+        if (!container) return;
+
+        const label = task.priority ? priorityLabels[task.priority] : null;
+        const date  = new Date(task.dueDate).toLocaleDateString('pt-PT');
+
+        const card = document.createElement('div');
+        card.className = `task-card${task.priority ? ` priority-${task.priority}` : ''}`;
+        card.dataset.id = task.id;
+        card.draggable = true;
+        card.addEventListener('dragstart', () => {
+            draggedTaskId = task.id;
+            card.classList.add('dragging');
+        });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+
+        card.innerHTML = `
+            <div class="task-header">
+                <span class="task-title">${esc(task.title)}</span>
+                <button class="task-delete" onclick="deleteTask(${task.id})" title="Apagar">✕</button>
+            </div>
+            <div class="task-description">${esc(task.description)}</div>
+            <div class="task-meta">
+                ${label ? `<span class="badge badge-priority-${task.priority}">${label}</span>` : ''}
+                ${task.category ? `<span class="badge badge-category">${esc(task.category)}</span>` : ''}
+                <span class="badge badge-meta">📅 ${date}</span>
+                ${task.estimatedDuration ? `<span class="badge badge-meta">⏱ ${task.estimatedDuration}min</span>` : ''}
+                ${task.isOverdue ? '<span class="badge badge-overdue">Atrasada</span>' : ''}
+            </div>
+        `;
+
+        container.appendChild(card);
+    }
+
+    function updateCounts() {
+        ['PorFazer', 'EmCurso', 'Concluida'].forEach(s => {
+            const n = document.getElementById(`tasks-${s}`).children.length;
+            document.getElementById(`count-${s}`).textContent = n;
+        });
+    }
+
+    // --- Modal ---
+
+    function openModal() {
+        document.getElementById('modal').classList.add('active');
+        document.getElementById('step-form').style.display = 'block';
+        document.getElementById('step-suggest').style.display = 'none';
+        document.getElementById('suggestion-panel').classList.remove('active');
+        document.getElementById('btn-confirm').style.display = 'none';
+        document.getElementById('btn-suggest').style.display = 'inline-block';
+        document.getElementById('btn-suggest').disabled = false;
+        document.getElementById('btn-suggest').innerHTML = 'Analisar com LLM';
+        document.getElementById('modal-title').textContent = 'Nova Tarefa';
+
+        // Limpa o formulário
+        ['f-title', 'f-description', 'f-duration'].forEach(id =>
+            document.getElementById(id).value = '');
+        document.getElementById('f-duedate').value = '';
+
+        currentTaskId = null;
+        currentSuggestion = null;
+        currentTaskData = null;
+    }
+
+    function closeModal() {
+        document.getElementById('modal').classList.remove('active');
+        // Recarrega o board se uma tarefa foi criada durante esta sessão do modal
+        if (currentTaskId) loadTasks();
+    }
+
+    async function createTask() {
+        const title       = document.getElementById('f-title').value.trim();
+        const description = document.getElementById('f-description').value.trim();
+        const dueDate     = document.getElementById('f-duedate').value;
+        const duration    = document.getElementById('f-duration').value;
+
+        if (!title || !description || !dueDate) {
+            alert('Preenche os campos obrigatórios: título, descrição e data limite.');
+            return;
+        }
+
+        const res = await fetch('/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title,
+                description,
+                dueDate: new Date(dueDate).toISOString(),
+                estimatedDuration: duration ? parseInt(duration) : null
+            })
+        });
+
+        if (!res.ok) { alert('Erro ao criar tarefa.'); return; }
+
+        const task = await res.json();
+        currentTaskId   = task.id;
+        currentTaskData = task;
+
+        // Avança para o passo 2 (sugestão LLM)
+        document.getElementById('step-form').style.display = 'none';
+        document.getElementById('step-suggest').style.display = 'block';
+        document.getElementById('modal-title').textContent = 'Tarefa criada';
+    }
+
+    async function suggestLLM() {
+        const btn = document.getElementById('btn-suggest');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading"></span>A analisar...';
+
+        const res = await fetch(`/tasks/${currentTaskId}/suggest`, { method: 'POST' });
+
+        if (!res.ok) {
+            alert('Erro ao obter sugestão do LLM.');
+            btn.disabled = false;
+            btn.innerHTML = 'Analisar com LLM';
+            return;
+        }
+
+        currentSuggestion = await res.json();
+
+        // Mostra o painel com a sugestão
+        document.getElementById('s-priority').textContent =
+            priorityLabels[currentSuggestion.priority] || currentSuggestion.priority;
+        document.getElementById('s-category').textContent = currentSuggestion.category;
+        document.getElementById('s-reasoning').textContent = currentSuggestion.reasoning;
+        document.getElementById('suggestion-panel').classList.add('active');
+
+        // Troca botão "Analisar" pelo "Confirmar"
+        btn.style.display = 'none';
+        document.getElementById('btn-confirm').style.display = 'inline-block';
+    }
+
+    async function confirmSuggestion() {
+        // PUT com os dados originais + prioridade e categoria sugeridas pelo LLM
+        const res = await fetch(`/tasks/${currentTaskId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title:             currentTaskData.title,
+                description:       currentTaskData.description,
+                dueDate:           currentTaskData.dueDate,
+                estimatedDuration: currentTaskData.estimatedDuration,
+                status:            currentTaskData.status,
+                priority:          currentSuggestion.priority,
+                category:          currentSuggestion.category
+            })
+        });
+
+        if (!res.ok) { alert('Erro ao guardar sugestão.'); return; }
+        closeModal();
+    }
+
+    // --- Delete ---
+
+    async function deleteTask(id) {
+        if (!confirm('Apagar esta tarefa permanentemente?')) return;
+        await fetch(`/tasks/${id}`, { method: 'DELETE' });
+        loadTasks();
+    }
+
+    // --- Drag and drop ---
+
+    function onDragOver(e) {
+        e.preventDefault();
+        e.currentTarget.classList.add('drag-over');
+    }
+
+    function onDragLeave(e) {
+        e.currentTarget.classList.remove('drag-over');
+    }
+
+    async function onDrop(e, newStatus) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('drag-over');
+        if (!draggedTaskId) return;
+
+        // Vai buscar os dados atuais da tarefa para fazer um PUT completo
+        const res  = await fetch(`/tasks/${draggedTaskId}`);
+        const task = await res.json();
+        if (task.status === newStatus) return;
+
+        await fetch(`/tasks/${draggedTaskId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title:             task.title,
+                description:       task.description,
+                dueDate:           task.dueDate,
+                estimatedDuration: task.estimatedDuration,
+                status:            newStatus,
+                priority:          task.priority,
+                category:          task.category
+            })
+        });
+
+        draggedTaskId = null;
+        loadTasks();
+    }
+
+    // Previne XSS ao renderizar conteúdo do utilizador no DOM
+    function esc(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+</script>
+
+</body>
+</html>
