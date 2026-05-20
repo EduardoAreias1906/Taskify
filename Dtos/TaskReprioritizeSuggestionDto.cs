@@ -4,8 +4,8 @@ namespace Taskify.Dtos;
 
 public class TaskReprioritizeSuggestionDto
 {
-    // Id da tarefa a que esta sugestão se refere
-    public int TaskId { get; set; }
+    // "id" corresponde ao campo devolvido pelo LLM no JSON
+    public int Id { get; set; }
     public TaskPriority Priority { get; set; }
     public string Reasoning { get; set; } = string.Empty;
 }

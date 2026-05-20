@@ -729,7 +729,7 @@
         list.innerHTML = '';
 
         reprioritizeSuggestions.forEach(s => {
-            const task    = taskCache.get(s.taskId);
+            const task    = taskCache.get(s.id);
             const oldP    = task?.priority;
             const newP    = s.priority;
             const changed = oldP !== newP;
@@ -737,7 +737,7 @@
             const item = document.createElement('div');
             item.className = 'reprioritize-item';
             item.innerHTML = `
-                <div class="reprioritize-item-title">${esc(task?.title ?? `#${s.taskId}`)}</div>
+                <div class="reprioritize-item-title">${esc(task?.title ?? `#${s.id}`)}</div>
                 <div class="reprioritize-item-change">
                     ${oldP
                         ? `<span class="badge badge-priority-${oldP}">${priorityLabels[oldP]}</span>`
@@ -760,9 +760,9 @@
     async function confirmReprioritize() {
         // Aplica cada sugestão com um PUT, mantendo os restantes campos inalterados
         await Promise.all(reprioritizeSuggestions.map(s => {
-            const task = taskCache.get(s.taskId);
+            const task = taskCache.get(s.id);
             if (!task) return;
-            return fetch(`/tasks/${s.taskId}`, {
+            return fetch(`/tasks/${s.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
