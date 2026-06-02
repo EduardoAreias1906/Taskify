@@ -6,7 +6,7 @@ API REST de gestão de tarefas com sugestões de prioridade e categoria por LLM.
 
 | Camada | Tecnologia |
 |--------|-----------|
-| Runtime | .NET 10, C# |
+| Runtime | .NET 9, C# |
 | API | Minimal API |
 | ORM | EF Core 10 (code-first) |
 | Base de dados | SQLite |
